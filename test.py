@@ -54,11 +54,20 @@ text = tokenizer.apply_chat_template(
     add_generation_prompt=True,  # Must add for generation
 ).removeprefix("<bos>")
 
-model.generate(
-    **tokenizer(text, return_tensors="pt").to("cuda"),
-    max_new_tokens=125,
-    temperature=1,
-    top_p=0.95,
-    top_k=64,
+# print(model.generate(
+#     **tokenizer(text, return_tensors="pt").to("cuda"),
+#     max_new_tokens=125,
+#     temperature=1,
+#     top_p=0.95,
+#     top_k=64,
+#     use_cache=False,
+# ))
+
+from transformers import TextStreamer
+_ = model.generate(
+    **tokenizer(text, return_tensors = "pt").to("cuda"),
+    max_new_tokens = 125,
+    temperature = 1, top_p = 0.95, top_k = 64,
+    streamer = TextStreamer(tokenizer, skip_prompt = True),
     use_cache=False,
 )
