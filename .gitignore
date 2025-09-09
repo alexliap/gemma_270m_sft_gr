@@ -10,3 +10,5 @@ wheels/
 .venv
 *.ipynb
 .DS_Store
+unsloth_compiled_cache/
+.ipynb_checkpoints/
