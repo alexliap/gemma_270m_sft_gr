@@ -11,6 +11,6 @@ correct_answers = [answer.tolist() for answer in correct_answers]
 
 truthful_qa_gr = pl.DataFrame(
     {"questions": questions, "correct_answers": correct_answers}
-)
+).explode("correct_answers")
 
 truthful_qa_gr.write_parquet("datasets/truthful_qa_greek.parquet")
