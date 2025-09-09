@@ -1,12 +1,15 @@
+import os
 import logging
 
 import polars as pl
 import torch
-from trl import SFTConfig, SFTTrainer
 from unsloth import FastModel
 from unsloth.chat_templates import train_on_responses_only
+from trl import SFTConfig, SFTTrainer
 
 from datasets import Dataset
+
+os.environ['UNSLOTH_RETURN_LOGITS'] = '1'
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,7 +22,6 @@ logger = logging.getLogger(__name__)
 def convert_to_chatml(example: dict):
     return {
         "conversations": [
-            # {"role": "system", "content": example["questions"]},
             {"role": "user", "content": example["questions"]},
             {"role": "assistant", "content": example["correct_answers"]},
         ]
@@ -48,26 +50,46 @@ if __name__ == "__main__":
         load_in_8bit=False,  # [NEW!] A bit more accurate, uses 2x memory
         full_finetuning=False,  # [NEW!] We have full finetuning now!
         # token = "hf_...", # use one if using gated models
+        use_cache=False,
+    )
+
+    model = FastModel.get_peft_model(
+        model,
+        r = 128, # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+                          "gate_proj", "up_proj", "down_proj",],
+        lora_alpha = 256,
+        lora_dropout = 0, # Supports any, but = 0 is optimized
+        bias = "none",    # Supports any, but = "none" is optimized
+        use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
+        random_state = 0,
+        use_rslora = False,  # We support rank stabilized LoRA
+        loftq_config = None, # And LoftQ
     )
 
     ds = ds.map(convert_to_chatml)
     ds = ds.map(formatting_prompts_func, batched=True)
+    ds = ds.train_test_split(test_size=0.25, shuffle=True)
 
     trainer = SFTTrainer(
         model=model,
-        tokenizer=tokenizer,
-        train_dataset=dataset,
-        eval_dataset=None,  # Can set up evaluation!
+        processing_class=tokenizer,
+        train_dataset=ds['train'],
+        eval_dataset=ds['test'],  # Can set up evaluation!
         args=SFTConfig(
             dataset_text_field="text",
-            per_device_train_batch_size=8,
+            per_device_train_batch_size=32,
             gradient_accumulation_steps=1,  # Use GA to mimic batch size!
             warmup_steps=5,
-            # num_train_epochs = 1, # Set this for 1 full training run.
-            max_steps=100,
-            learning_rate=5e-5,  # Reduce to 2e-5 for long training runs
+            num_train_epochs = 1, # Set this for 1 full training run.
+            # max_steps=100,
+            do_eval=True,
+            eval_on_start=True,
+            eval_strategy="steps",
+            eval_steps=0.2,
+            learning_rate=2e-5,  # Reduce to 2e-5 for long training runs
             logging_steps=1,
-            optim="adamw_8bit",
+            optim="adamw_torch",
             weight_decay=0.01,
             lr_scheduler_type="linear",
             seed=0,
