@@ -1,6 +1,6 @@
 import polars as pl
 from datasets import Dataset, load_dataset
-from unsloth import FastTokenizer
+from transformers import PreTrainedTokenizerFast
 
 
 def convert_to_chatml(entry: dict, dataset: str):
@@ -20,7 +20,7 @@ def convert_to_chatml(entry: dict, dataset: str):
     }
 
 
-def formatting_prompts_func(entry: dict, tokenizer: FastTokenizer):
+def formatting_prompts_func(entry: dict, tokenizer: PreTrainedTokenizerFast):
     convos = entry["conversations"]
     texts = [
         tokenizer.apply_chat_template(
@@ -31,7 +31,7 @@ def formatting_prompts_func(entry: dict, tokenizer: FastTokenizer):
     return {"text": texts}
 
 
-def truthful_qa_gr() -> Dataset:
+def truthful_qa_gr(tokenizer: PreTrainedTokenizerFast) -> Dataset:
     dataset = load_dataset(path="ilsp/truthful_qa_greek", name="generation")
 
     questions = dataset.data["train"]["question"].to_numpy().tolist()
@@ -46,14 +46,21 @@ def truthful_qa_gr() -> Dataset:
     dataset = Dataset.from_dict(dataset.to_dict())
 
     dataset = dataset.map(convert_to_chatml, fn_kwargs={"dataset": "truthful_qa_gr"})
+    
+    dataset = dataset.map(formatting_prompts_func, fn_kwargs={"tokenizer": tokenizer}, batched=True)
+
+    dataset = dataset.remove_columns(['questions', 'correct_answers', 'conversations'])
 
     return dataset
 
 
-def medical_mcqa_gr(split: str) -> Dataset:
+def medical_mcqa_gr(tokenizer: PreTrainedTokenizerFast, split: str) -> Dataset:
     dataset = load_dataset(path="ilsp/medical_mcqa_greek", split=split)
     dataset = dataset.remove_columns(["idx", "multiple_choice_scores", "subject"])
 
     dataset = dataset.map(convert_to_chatml, fn_kwargs={"dataset": "medical_mcqa_gr"})
+    dataset = dataset.map(formatting_prompts_func, fn_kwargs={"tokenizer": tokenizer}, batched=True)
+
+    dataset = dataset.remove_columns(['inputs', 'targets', 'multiple_choice_targets', 'conversations'])
 
     return dataset

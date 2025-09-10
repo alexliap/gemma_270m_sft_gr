@@ -31,5 +31,8 @@ uv sync
 echo "Install pre-commit ..."
 pre-commit s
 
+echo "Make necessary kernel for Jupyter to use ..."
+uv run -m ipykernel install --user --name=gemma_sft
+
 echo "Configure Git User email ..."
 git config --global user.email "alexandrosliapates@gmail.com"

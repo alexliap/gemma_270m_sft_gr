@@ -3,46 +3,24 @@ import logging
 
 import polars as pl
 import torch
+from datasets import concatenate_datasets
 from unsloth import FastModel
 from unsloth.chat_templates import train_on_responses_only
 from trl import SFTConfig, SFTTrainer
+from gemma_finetune.data_import import truthful_qa_gr, medical_mcqa_gr
 
-from datasets import Dataset
 
 os.environ['UNSLOTH_RETURN_LOGITS'] = '1'
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[logging.StreamHandler()],
 )
 logger = logging.getLogger(__name__)
 
 
-def convert_to_chatml(example: dict):
-    return {
-        "conversations": [
-            {"role": "user", "content": example["questions"]},
-            {"role": "assistant", "content": example["correct_answers"]},
-        ]
-    }
-
-
-def formatting_prompts_func(examples):
-    convos = examples["conversations"]
-    texts = [
-        tokenizer.apply_chat_template(
-            convo, tokenize=False, add_generation_prompt=False
-        ).removeprefix("<bos>")
-        for convo in convos
-    ]
-    return {"text": texts}
-
-
 if __name__ == "__main__":
-    dataset = pl.read_parquet("datasets/truthful_qa_greek.parquet")
-    ds = Dataset.from_dict(dataset.to_dict())
-
+    
     model, tokenizer = FastModel.from_pretrained(
         model_name="unsloth/gemma-3-270m-it",
         max_seq_length=2048,  # Choose any for long context!
@@ -67,8 +45,13 @@ if __name__ == "__main__":
         loftq_config = None, # And LoftQ
     )
 
-    ds = ds.map(convert_to_chatml)
-    ds = ds.map(formatting_prompts_func, batched=True)
+    ds_1 = truthful_qa_gr(tokenizer=tokenizer)
+    ds_2 = medical_mcqa_gr(tokenizer=tokenizer, split="train")
+
+    ds = concatenate_datasets([ds_1, ds_2])
+
+    logger.info(f"Total entries in dataset: {len(ds)}")
+    
     ds = ds.train_test_split(test_size=0.25, shuffle=True)
 
     trainer = SFTTrainer(
