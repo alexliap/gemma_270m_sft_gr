@@ -29,7 +29,7 @@ source $HOME/.local/bin/env
 uv sync
 
 echo "Install pre-commit ..."
-pre-commit s
+uv run pre-commit install
 
 echo "Make necessary kernel for Jupyter to use ..."
 uv run -m ipykernel install --user --name=gemma_sft

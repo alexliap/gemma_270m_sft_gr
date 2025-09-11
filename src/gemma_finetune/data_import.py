@@ -77,7 +77,7 @@ def medical_mcqa_gr(tokenizer: PreTrainedTokenizerFast, split: str) -> Dataset:
 
 
 def greek_civics_qa(tokenizer: PreTrainedTokenizerFast) -> Dataset:
-    dataset = load_dataset(path="ilsp/greek_civics_qa")
+    dataset = load_dataset(path="ilsp/greek_civics_qa", split="default")
 
     dataset = dataset.map(convert_to_chatml, fn_kwargs={"dataset": "greek_civics_qa"})
     dataset = dataset.map(
