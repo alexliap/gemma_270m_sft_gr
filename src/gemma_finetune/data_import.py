@@ -16,6 +16,10 @@ def convert_to_chatml(entry: dict, dataset: str):
         prompt = entry["question"]
         expected_answer = entry["answer"]
 
+    elif dataset == "el_qa":
+        prompt = entry["name"]
+        expected_answer = entry["answers"][0]["text"]
+
     return {
         "conversations": [
             {"role": "user", "content": prompt},
@@ -80,6 +84,19 @@ def greek_civics_qa(tokenizer: PreTrainedTokenizerFast) -> Dataset:
     dataset = load_dataset(path="ilsp/greek_civics_qa", split="default")
 
     dataset = dataset.map(convert_to_chatml, fn_kwargs={"dataset": "greek_civics_qa"})
+    dataset = dataset.map(
+        formatting_prompts_func, fn_kwargs={"tokenizer": tokenizer}, batched=True
+    )
+
+    dataset = dataset.remove_columns([col for col in dataset.features if col != "text"])
+
+    return dataset
+
+
+def el_qa(tokenizer: PreTrainedTokenizerFast) -> Dataset:
+    dataset = load_dataset(path="clips/mqa", split="default", name="el-all-question")
+
+    dataset = dataset.map(convert_to_chatml, fn_kwargs={"dataset": "el_qa"})
     dataset = dataset.map(
         formatting_prompts_func, fn_kwargs={"tokenizer": tokenizer}, batched=True
     )
