@@ -1,7 +1,6 @@
 import logging
 import os
-from unsloth import FastModel
-from unsloth.chat_templates import train_on_responses_only
+
 import torch
 from datasets import concatenate_datasets
 from transformers import PreTrainedTokenizerFast
@@ -9,8 +8,12 @@ from trl import SFTConfig, SFTTrainer
 from unsloth import FastModel
 from unsloth.chat_templates import train_on_responses_only
 
-from gemma_finetune.data_import import greek_civics_qa, medical_mcqa_gr, truthful_qa_gr
-
+from gemma_finetune.data_import import (
+    el_wiki_qa,
+    greek_civics_qa,
+    medical_mcqa_gr,
+    truthful_qa_gr,
+)
 
 os.environ["UNSLOTH_RETURN_LOGITS"] = "1"
 
@@ -32,9 +35,16 @@ def make_datasets(tokenizer: PreTrainedTokenizerFast):
     ds_3 = greek_civics_qa(tokenizer=tokenizer)
     ds_3 = ds_3.train_test_split(test_size=0.25, shuffle=True)
 
-    ds_train = concatenate_datasets([ds_1["train"], ds_2["train"], ds_3['train']])
+    ds_4 = el_wiki_qa(tokenizer=tokenizer)
+    ds_4 = ds_4.train_test_split(test_size=0.25, shuffle=True)
 
-    ds_val = concatenate_datasets([ds_1["test"], ds_2["test"], ds_3['test']])
+    ds_train = concatenate_datasets(
+        [ds_1["train"], ds_2["train"], ds_3["train"], ds_4["train"]]
+    )
+
+    ds_val = concatenate_datasets(
+        [ds_1["test"], ds_2["test"], ds_3["test"], ds_4["test"]]
+    )
 
     logger.info(f"Total training entries in dataset: {len(ds_train)}")
 
@@ -94,7 +104,7 @@ if __name__ == "__main__":
             eval_strategy="steps",
             eval_steps=0.2,
             learning_rate=2e-5,  # Reduce to 2e-5 for long training runs
-            logging_steps=2,
+            logging_steps=0.05,
             optim="adamw_torch",
             weight_decay=0.01,
             lr_scheduler_type="linear",
@@ -116,7 +126,7 @@ if __name__ == "__main__":
 
     logger.info(f"GPU = {gpu_stats.name}. Max memory = {max_memory} GB.")
     logger.info(f"{start_gpu_memory} GB of memory reserved.")
-    
+
     trainer_stats = trainer.train()
 
     used_memory = round(torch.cuda.max_memory_reserved() / 1024 / 1024 / 1024, 3)

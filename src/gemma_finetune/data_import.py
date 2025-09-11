@@ -16,9 +16,18 @@ def convert_to_chatml(entry: dict, dataset: str):
         prompt = entry["question"]
         expected_answer = entry["answer"]
 
-    elif dataset == "el_qa":
-        prompt = entry["name"]
-        expected_answer = entry["answers"][0]["text"]
+    elif dataset == "el_wiki_qa":
+        template = """
+        Title: {title}
+
+        Context: {context}
+
+        Question: {question}
+        """
+        prompt = template.format(
+            title=entry["title"], context=entry["context"], question=entry["question"]
+        )
+        expected_answer = entry["answers"]["text"][0]
 
     return {
         "conversations": [
@@ -93,10 +102,10 @@ def greek_civics_qa(tokenizer: PreTrainedTokenizerFast) -> Dataset:
     return dataset
 
 
-def el_qa(tokenizer: PreTrainedTokenizerFast) -> Dataset:
-    dataset = load_dataset(path="clips/mqa", split="default", name="el-all-question")
+def el_wiki_qa(tokenizer: PreTrainedTokenizerFast) -> Dataset:
+    dataset = load_dataset(path="alexandrainst/multi-wiki-qa", split="train", name="el")
 
-    dataset = dataset.map(convert_to_chatml, fn_kwargs={"dataset": "el_qa"})
+    dataset = dataset.map(convert_to_chatml, fn_kwargs={"dataset": "el_wiki_qa"})
     dataset = dataset.map(
         formatting_prompts_func, fn_kwargs={"tokenizer": tokenizer}, batched=True
     )
