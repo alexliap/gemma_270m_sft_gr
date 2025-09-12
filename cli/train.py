@@ -2,18 +2,20 @@ import logging
 import os
 
 import torch
+from unsloth import FastModel
+from unsloth.chat_templates import train_on_responses_only
 from datasets import concatenate_datasets
 from transformers import PreTrainedTokenizerFast
 from trl import SFTConfig, SFTTrainer
-from unsloth import FastModel
-from unsloth.chat_templates import train_on_responses_only
 
 from gemma_finetune.data_import import (
     el_wiki_qa,
     greek_civics_qa,
     medical_mcqa_gr,
     truthful_qa_gr,
+    belebele_gr,
 )
+
 
 os.environ["UNSLOTH_RETURN_LOGITS"] = "1"
 
@@ -38,12 +40,15 @@ def make_datasets(tokenizer: PreTrainedTokenizerFast):
     ds_4 = el_wiki_qa(tokenizer=tokenizer)
     ds_4 = ds_4.train_test_split(test_size=0.25, shuffle=True)
 
+    ds_5 = belebele_gr(tokenizer=tokenizer)
+    ds_5 = ds_5.train_test_split(test_size=0.25, shuffle=True)
+
     ds_train = concatenate_datasets(
-        [ds_1["train"], ds_2["train"], ds_3["train"], ds_4["train"]]
+        [ds_1["train"], ds_2["train"], ds_3["train"], ds_4["train"], ds_5["train"]]
     )
 
     ds_val = concatenate_datasets(
-        [ds_1["test"], ds_2["test"], ds_3["test"], ds_4["test"]]
+        [ds_1["test"], ds_2["test"], ds_3["test"], ds_4["test"], ds_5["test"]]
     )
 
     logger.info(f"Total training entries in dataset: {len(ds_train)}")
@@ -56,7 +61,6 @@ def make_datasets(tokenizer: PreTrainedTokenizerFast):
 if __name__ == "__main__":
     model, tokenizer = FastModel.from_pretrained(
         model_name="unsloth/gemma-3-270m-it",
-        max_seq_length=2048,  # Choose any for long context!
         load_in_4bit=False,  # 4 bit quantization to reduce memory
         load_in_8bit=False,  # [NEW!] A bit more accurate, uses 2x memory
         full_finetuning=False,  # [NEW!] We have full finetuning now!
@@ -93,12 +97,11 @@ if __name__ == "__main__":
         eval_dataset=val,  # Can set up evaluation!
         args=SFTConfig(
             dataset_text_field="text",
-            per_device_train_batch_size=32,
-            per_device_eval_batch_size=32,
-            gradient_accumulation_steps=1,  # Use GA to mimic batch size!
+            per_device_train_batch_size=16,
+            per_device_eval_batch_size=16,
+            gradient_accumulation_steps=2,  # Use GA to mimic batch size!
             warmup_steps=5,
             num_train_epochs=1,  # Set this for 1 full training run.
-            # max_steps=100,
             do_eval=True,
             eval_on_start=True,
             eval_strategy="steps",
@@ -109,7 +112,7 @@ if __name__ == "__main__":
             weight_decay=0.01,
             lr_scheduler_type="linear",
             seed=0,
-            output_dir="gemma3_270m_sft_gr",
+            output_dir="outputs_only",
             report_to="none",  # Use this for WandB etc
         ),
     )

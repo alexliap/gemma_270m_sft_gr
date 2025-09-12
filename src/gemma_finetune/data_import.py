@@ -29,6 +29,34 @@ def convert_to_chatml(entry: dict, dataset: str):
         )
         expected_answer = entry["answers"]["text"][0]
 
+    elif dataset == "belebele_gr":
+        template = """
+        Ερώτηση: {question}
+
+        Απόσπασμα: {context}
+
+        Πιθανές απαντήσεις: {answers}
+        """
+
+        possible_answers = f"""
+        1) {entry['mc_answer1']}
+
+        2) {entry['mc_answer2']}
+
+        3) {entry['mc_answer3']}
+
+        4) {entry['mc_answer4']}
+        """
+
+        expected_answer = "mc_answer" + entry["correct_answer_num"]
+
+        prompt = template.format(
+            question=entry["question"],
+            context=entry["flores_passage"],
+            answers=possible_answers,
+        )
+        expected_answer = entry[expected_answer]
+
     return {
         "conversations": [
             {"role": "user", "content": prompt},
@@ -106,6 +134,19 @@ def el_wiki_qa(tokenizer: PreTrainedTokenizerFast) -> Dataset:
     dataset = load_dataset(path="alexandrainst/multi-wiki-qa", split="train", name="el")
 
     dataset = dataset.map(convert_to_chatml, fn_kwargs={"dataset": "el_wiki_qa"})
+    dataset = dataset.map(
+        formatting_prompts_func, fn_kwargs={"tokenizer": tokenizer}, batched=True
+    )
+
+    dataset = dataset.remove_columns([col for col in dataset.features if col != "text"])
+
+    return dataset
+
+
+def belebele_gr(tokenizer: PreTrainedTokenizerFast) -> Dataset:
+    dataset = load_dataset("facebook/belebele", split="test", name="ell_Grek")
+
+    dataset = dataset.map(convert_to_chatml, fn_kwargs={"dataset": "belebele_gr"})
     dataset = dataset.map(
         formatting_prompts_func, fn_kwargs={"tokenizer": tokenizer}, batched=True
     )
