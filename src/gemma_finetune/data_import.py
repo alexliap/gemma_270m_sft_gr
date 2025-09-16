@@ -59,7 +59,7 @@ def convert_to_chatml(entry: dict, dataset: str):
 
     elif dataset == "hellaswag_gr":
         prompt = entry["ctx"]
-        correct_answer_idx = entry["label"]
+        correct_answer_idx = int(entry["label"])
         expected_answer = entry["endings"][correct_answer_idx]
 
     return {

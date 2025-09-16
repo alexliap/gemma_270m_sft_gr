@@ -56,7 +56,7 @@ def make_datasets(tokenizer: PreTrainedTokenizerFast):
             ds_5["train"],
             ds_6["train"],
         ]
-    )
+    ).shuffle(seed=0)
 
     ds_val = concatenate_datasets(
         [
@@ -67,7 +67,7 @@ def make_datasets(tokenizer: PreTrainedTokenizerFast):
             ds_5["test"],
             ds_6["train"],
         ]
-    )
+    ).shuffle(seed=0)
 
     logger.info(f"Total training entries in dataset: {len(ds_train)}")
 
@@ -97,7 +97,7 @@ if __name__ == "__main__":
             "up_proj",
             "down_proj",
         ],
-        lora_alpha=256,
+        lora_alpha=128,
         lora_dropout=0,  # Supports any, but = 0 is optimized
         bias="none",  # Supports any, but = "none" is optimized
         use_gradient_checkpointing="unsloth",  # True or "unsloth" for very long context
@@ -130,16 +130,16 @@ if __name__ == "__main__":
             weight_decay=0.01,
             lr_scheduler_type="linear",
             seed=0,
-            output_dir="outputs_only",
+            output_dir="equal_alpha",
             report_to="none",  # Use this for WandB etc
         ),
     )
 
-    trainer = train_on_responses_only(
-        trainer,
-        instruction_part="<start_of_turn>user\n",
-        response_part="<start_of_turn>model\n",
-    )
+    # trainer = train_on_responses_only(
+    #     trainer,
+    #     instruction_part="<start_of_turn>user\n",
+    #     response_part="<start_of_turn>model\n",
+    # )
 
     gpu_stats = torch.cuda.get_device_properties(0)
     start_gpu_memory = round(torch.cuda.max_memory_reserved() / 1024 / 1024 / 1024, 3)
