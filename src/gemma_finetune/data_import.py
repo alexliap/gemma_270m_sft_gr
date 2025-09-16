@@ -29,6 +29,11 @@ def convert_to_chatml(entry: dict, dataset: str):
         )
         expected_answer = entry["answers"]["text"][0]
 
+    elif dataset == "hellaswag_gr":
+        prompt = entry["ctx"]
+        correct_answer_idx = entry["label"]
+        expected_answer = entry["endings"][correct_answer_idx]
+
     return {
         "conversations": [
             {"role": "user", "content": prompt},
@@ -106,6 +111,19 @@ def el_wiki_qa(tokenizer: PreTrainedTokenizerFast) -> Dataset:
     dataset = load_dataset(path="alexandrainst/multi-wiki-qa", split="train", name="el")
 
     dataset = dataset.map(convert_to_chatml, fn_kwargs={"dataset": "el_wiki_qa"})
+    dataset = dataset.map(
+        formatting_prompts_func, fn_kwargs={"tokenizer": tokenizer}, batched=True
+    )
+
+    dataset = dataset.remove_columns([col for col in dataset.features if col != "text"])
+
+    return dataset
+
+
+def hellaswag_gr(tokenizer: PreTrainedTokenizerFast) -> Dataset:
+    dataset = load_dataset(path="ilsp/hellaswag_greek", split="train")
+
+    dataset = dataset.map(convert_to_chatml, fn_kwargs={"dataset": "hellaswag_gr"})
     dataset = dataset.map(
         formatting_prompts_func, fn_kwargs={"tokenizer": tokenizer}, batched=True
     )

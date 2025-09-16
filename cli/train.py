@@ -13,6 +13,7 @@ from gemma_finetune.data_import import (
     greek_civics_qa,
     medical_mcqa_gr,
     truthful_qa_gr,
+    hellaswag_gr,
 )
 
 os.environ["UNSLOTH_RETURN_LOGITS"] = "1"
@@ -38,12 +39,15 @@ def make_datasets(tokenizer: PreTrainedTokenizerFast):
     ds_4 = el_wiki_qa(tokenizer=tokenizer)
     ds_4 = ds_4.train_test_split(test_size=0.25, shuffle=True)
 
+    ds_5 = hellaswag_gr(tokenizer=tokenizer)
+    ds_5 = ds_5.train_test_split(test_size=0.25, shuffle=True)
+
     ds_train = concatenate_datasets(
-        [ds_1["train"], ds_2["train"], ds_3["train"], ds_4["train"]]
+        [ds_1["train"], ds_2["train"], ds_3["train"], ds_4["train"], ds_5["train"]]
     )
 
     ds_val = concatenate_datasets(
-        [ds_1["test"], ds_2["test"], ds_3["test"], ds_4["test"]]
+        [ds_1["test"], ds_2["test"], ds_3["test"], ds_4["test"], ds_5["test"]]
     )
 
     logger.info(f"Total training entries in dataset: {len(ds_train)}")
