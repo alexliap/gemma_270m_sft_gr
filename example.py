@@ -1,15 +1,11 @@
-import os
-from unsloth import FastModel
-from transformers import TextStreamer
+from transformers import AutoModelForCausalLM, AutoTokenizer, TextStreamer
+import torch
 
-os.environ["TOKENIZERS_PARALLELISM"] = "True"
-
-model, tokenizer = FastModel.from_pretrained(
-    model_name="alexliap/gemma3_270m_sft_gr",  # YOUR MODEL YOU USED FOR TRAINING
-    load_in_4bit=False,
-    load_in_8bit=False,
-    full_finetuning=False,
-    use_cache=False,
+# Load model & tokenizer
+model_name = "alexliap/gemma-3-270m-it-stf-gr"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(
+    model_name, dtype=torch.bfloat16, device_map="cuda"
 )
 
 messages = [
@@ -25,9 +21,9 @@ text = tokenizer.apply_chat_template(
 
 model.generate(
     **tokenizer(text, return_tensors="pt").to("cuda"),
-    max_new_tokens=1024,
-    temperature=0.4,
-    top_k=64,
-    use_cache=False,
+    max_new_tokens=256,
+    do_sample=True,
+    top_p=0.9,
+    temperature=0.8,
     streamer=TextStreamer(tokenizer, skip_prompt=True),
 )
